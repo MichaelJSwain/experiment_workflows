@@ -7,9 +7,12 @@ import { Dashboard } from './pages/Dashboard/Dashboard'
 function App() {
   
   return (
-    <>
+    <div>
+      <div id="react_portal"></div>
+      <div>
       <Dashboard></Dashboard>
-    </>
+      </div>
+    </div>
   )
 }
 
