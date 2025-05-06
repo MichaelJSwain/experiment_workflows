@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { fetchOptlyTests } from "../../services/optimizelyService";
+import { validateExpStatusChange } from "../../utils/validateExp";
 
 export const Dashboard = () => {
     const [tests, setTests] = useState([]);
@@ -7,11 +9,16 @@ export const Dashboard = () => {
     const fetchTests = async () => {
         setIsLoading(true);
         
-        setTimeout(() => {
-            setTests([{name: 'test 1'}]);
-            setIsLoading(false);
-        }, 2000);
+        const tests = await fetchOptlyTests();
+        setTests(tests);
+        setIsLoading(false);
     };
+
+    const handleStatusChange = (testID) => {
+        console.log("handling status change");
+        const res = validateExpStatusChange(testID);
+        console.log("res recieved in dashboard = ", res);
+    }
 
     useEffect(() => {
         // "fetch" tests from Optimizely
@@ -22,8 +29,7 @@ export const Dashboard = () => {
         <div>
             {isLoading && <div>Loading...</div>}
 
-            {!!tests.length && tests.map(test => {
-                return <table>
+            {!!tests.length && <table>
                     <thead>
                         <tr>
                             <td>Name</td>
@@ -33,21 +39,21 @@ export const Dashboard = () => {
                     </thead>
                     <tbody>
                         {tests.map(test => {
-                            return  <tr>
-                                    <td>{test.name}</td>
-                                    <td>{test.status}</td>
-                                    <td>
-                                        <button>
-                                            Start
-                                        </button>
-                                    </td>
-                                </tr>
+                            return  <tr key={test.id}>
+                                        <td>{test.name}</td>
+                                        <td>{test.status}</td>
+                                        <td>
+                                            <button onClick={() => handleStatusChange(test.id)}>
+                                                Start
+                                            </button>
+                                        </td>
+                                    </tr>
                         })
                         
                        }
                     </tbody>
                 </table>
-            })}
+            }
         </div>
     )
 };
