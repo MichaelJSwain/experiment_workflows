@@ -4,6 +4,7 @@ import { validateExpStatusChange } from "../../../utils/validateExp";
 import { createPortal } from "react-dom";
 import { Modal } from "../../../components/Modal/Modal";
 import './Dashboard.css';
+import { postTeamsUpdate } from "../../../services/teamsService";
 
 export const Dashboard = () => {
     const [tests, setTests] = useState([]);
@@ -41,13 +42,18 @@ export const Dashboard = () => {
 
     const handleConfirmAction = (result) => {
         console.log("validation result = ", result);
+        let updatedTest; 
+
         const updatedTests = tests.map(test => {
             if (test.name === result.name) {
                 console.log("matching test");
+                updatedTest = test;
                 test.status = test.status.includes("running") ? "paused" : "running";
             }
             return test;
         })
+
+        postTeamsUpdate(updatedTest.name, updatedTest.status);
 
         setTests(updatedTests);
         setIsShowingModal(false); 
