@@ -1,8 +1,6 @@
-import 'dotenv/config';
-import { getOptlyExp } from './getOptlyExp.js';
-import { getOptlyTargeting } from './getOptlyTargeting.js';
-import { getJiraTicket } from './getJiraTicket.js';
-const {EMAIL, URL, JIRA_AUTH_TOKEN, TICKET_ID, DT_AUDIENCE, MB_AUDIENCE, QA_AUDIENCE} = process.env;
+import { fetchOptlyTestConfig, fetchOptlyTestTargeting } from '../services/optimizelyService.js';
+import { fetchJiraTicket } from '../services/jiraService.js';
+const {EMAIL, URL, JIRA_AUTH_TOKEN, TICKET_ID, VITE_DT_AUDIENCE, VITE_MB_AUDIENCE, QA_AUDIENCE} = import.meta.env;
 
 function parseTargeting(targeting) {
   // Clean up the input by removing escape characters (like \n, \r, etc.)
@@ -58,7 +56,7 @@ const parseJiraTicketDetails = (details) => {
 }
 
 const validateLocales = (expTargeting, targetedLocales) => {
-  if (targetedLocales.toLowerCase() === "big7" && expTargeting.includes("uk|nl|de|fr|it|es|pl")) {
+  if (targetedLocales.toLowerCase().includes("big7") && expTargeting.includes("uk|nl|de|fr|it|es|pl")) {
     console.log("domain targeting error");
     return true;
   } else if (targetedLocales.toLowerCase() === "big6" && expTargeting.includes("uk|nl|de|fr|it|es")) {
@@ -72,11 +70,11 @@ const validateAudience = (expAudiences, targetedAudiences) => {
   const desktopOnly = /^(?!.*\b(mb|mobile|m)\b).*\b(dt|desktop|d)\b/;
   const mobileOnly = /^(?!.*\b(dt|desktop|d)\b).*\b(mb|mobile|m)\b/;
 
-  if (mobileAndDesktop.test(targetedAudiences) && (expAudiences.includes(MB_AUDIENCE) && expAudiences.includes(DT_AUDIENCE))) {
+  if (mobileAndDesktop.test(targetedAudiences) && (expAudiences.includes(VITE_MB_AUDIENCE) && expAudiences.includes(VITE_DT_AUDIENCE))) {
     return true;
-  } else if (desktopOnly.test(targetedAudiences) && (expAudiences.includes(DT_AUDIENCE) && !expAudiences.includes(MB_AUDIENCE))) {
+  } else if (desktopOnly.test(targetedAudiences) && (expAudiences.includes(VITE_DT_AUDIENCE) && !expAudiences.includes(VITE_MB_AUDIENCE))) {
     return true;
-  } else if (mobileOnly.test(targetedAudiences) && (!expAudiences.includes(DT_AUDIENCE) && expAudiences.includes(MB_AUDIENCE))) {
+  } else if (mobileOnly.test(targetedAudiences) && (!expAudiences.includes(VITE_DT_AUDIENCE) && expAudiences.includes(VITE_MB_AUDIENCE))) {
     return true;
   } 
 
@@ -121,43 +119,54 @@ const validateCustomGoals = (experiment, goalsInTicket) => {
 
 const validateExpConfig = (optlyExp, jiraTicket) => {
   const {targeting, goals} = jiraTicket;
-
+  const issues = [];
   // check locales
   const isValidLocale = validateLocales(optlyExp.page_configs[0].conditions, targeting.domain);
-  
+  console.log("is valid locale = ", isValidLocale);
+  if (!isValidLocale) {
+    issues.push('Incorrect locale targeting');
+  }
   // check page type e.g. PDP
   
   // check device (audience)
   const isValidAudience = validateAudience(optlyExp.audience_conditions, targeting.device.toLowerCase());
-
+  console.log("is valid audience = ", isValidAudience);
+  if (!isValidAudience) {
+    issues.push('Incorrect audiences used');
+  }
   // check activation mode
 
   // check changes seen
 
   // check custom goals
   const isValidCustomGoals = validateCustomGoals(optlyExp, goals);
+  console.log("is valid custom goals = ", isValidCustomGoals)
+  if (!isValidCustomGoals) {
+    issues.push('Missing custom goals');
+  }
 
   return {
-    isValid: !!isValidLocale && !!isValidAudience && !!isValidCustomGoals
+    isValid: !!isValidLocale && !!isValidAudience && !!isValidCustomGoals,
+    issues
   }
 }
 
-const validateExpStatusChange = (expID) => {
-  const optlyExp = getOptlyExp(expID);
-  const expWithTargeting = getOptlyTargeting(optlyExp);
+export const validateExpStatusChange = (expID) => {
+  const optlyExp = fetchOptlyTestConfig(expID);
+  const expWithTargeting = fetchOptlyTestTargeting(optlyExp);
   
-  const jiraTicket = getJiraTicket();
+  const jiraTicket = fetchJiraTicket();
   const parsedJiraDetails = parseJiraTicketDetails(jiraTicket);
   
   const res = validateExpConfig(expWithTargeting, parsedJiraDetails)
   
-  if (res.isValid) {
-    // proceed with status change
-    console.log("successfully changed exp status");
-  } else {
-    // block action
-    console.log("please resolve issues with exp config and try again");
+  return {
+    ...res,
+    message: res.isValid
+    ? 'Test is valid and ready for launch.'
+    : 'Validation failed. Please review the issues below.',
+    name: optlyExp.name
   }
 }
 // on status change
-validateExpStatusChange(293489832);
+// validateExpStatusChange(5576748117524480);
