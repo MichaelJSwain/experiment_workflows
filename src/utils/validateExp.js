@@ -164,7 +164,8 @@ export const validateExpStatusChange = (expID) => {
     ...res,
     message: res.isValid
     ? 'Test is valid and ready for launch.'
-    : 'Validation failed. Please review the issues below.'
+    : 'Validation failed. Please review the issues below.',
+    name: optlyExp.name
   }
 }
 // on status change
