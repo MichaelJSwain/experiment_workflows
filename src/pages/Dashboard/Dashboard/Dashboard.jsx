@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchOptlyTests } from "../../../services/optimizelyService";
+import { fetchOptlyTests, updateOptlyTestStatus } from "../../../services/optimizelyService.js";
 import { validateExpStatusChange } from "../../../utils/validateExp";
 import { createPortal } from "react-dom";
 import { Modal } from "../../../components/Modal/Modal";
@@ -42,18 +42,19 @@ export const Dashboard = () => {
 
     const handleConfirmAction = (result) => {
         console.log("validation result = ", result);
-        let updatedTest; 
+        let updatedTest;
 
         const updatedTests = tests.map(test => {
             if (test.name === result.name) {
                 console.log("matching test");
-                updatedTest = test;
                 test.status = test.status.includes("running") ? "paused" : "running";
+                updatedTest = test;
             }
             return test;
         })
 
         postTeamsUpdate(updatedTest.name, updatedTest.status);
+        updateOptlyTestStatus(updatedTest.status);
 
         setTests(updatedTests);
         setIsShowingModal(false); 
